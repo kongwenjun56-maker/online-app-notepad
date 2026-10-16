@@ -1,0 +1,33 @@
+name: Release
+
+# 只在主仓库收到 v* tag 时触发：构建 Windows 安装包 + 便携包，
+# 并由 electron-builder 直接创建/更新 GitHub Release。
+# 安全说明：fork 仓库里 push tag 只会触发 fork 自己的 Actions，
+# GITHUB_TOKEN 的写权限仅属于运行本 workflow 的仓库，外人碰不到官方 Release。
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # 允许创建 Release 并上传资产
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and publish
+        run: npm run dist -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

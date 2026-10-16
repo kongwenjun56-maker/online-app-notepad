@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>网申记事本 · 网申投递管理</title>
+<style>
+:root{
+  --bg:#0d1117; --bg2:#11161f; --panel:#161c28; --panel2:#1b2330; --line:#263041;
+  --text:#e8edf5; --muted:#8d99ae; --accent:#5b9dff; --accent-soft:rgba(91,157,255,.14);
+  --green:#3ecf8e; --red:#ff6b6b; --amber:#f5b74e;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:14px/1.6 "Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;transition:all .15s}
+button:hover{border-color:#33415c;background:#202a3a}
+button.primary{background:var(--accent);border-color:var(--accent);color:#0b1220;font-weight:600}
+button.primary:hover{filter:brightness(1.1);background:var(--accent)}
+button.mini{padding:3px 9px;font-size:12px;border-radius:6px}
+button.danger:hover{border-color:var(--red);color:var(--red)}
+.icon-btn{padding:2px 6px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;border-radius:5px}
+.icon-btn:hover{color:var(--accent);background:var(--accent-soft)}
+input,textarea{background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 11px;font:inherit;font-size:13.5px;width:100%}
+input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+/* v1.0.2 2026-10-14：作者样式中的 display 会覆盖浏览器默认样式表的 [hidden]{display:none}，
+   导致带 hidden 属性的弹窗/提示仍然显示、点哪里都关不掉。全局防御规则压住所有情况。 */
+[hidden]{display:none !important}
+
+/* ===== 顶栏 ===== */
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--bg2);position:sticky;top:0;z-index:10}
+.brand{font-size:17px;font-weight:700;white-space:nowrap}
+.brand .sub{font-size:12px;color:var(--muted);font-weight:400;margin-left:10px}
+.stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-left:auto}
+.stat{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.stat b{color:var(--text);font-size:14px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot-applied{background:var(--green)} .dot-pending{background:#4a5878} .dot-terminated{background:var(--red)}
+.head-ops{display:flex;gap:8px}
+
+main{padding:22px;max-width:1280px;margin:0 auto}
+section{margin-bottom:34px}
+.sec-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sec-head h2{font-size:15.5px;margin:0}
+.sec-head .tools{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#searchBox{width:220px}
+.chip{padding:5px 12px;border-radius:999px;font-size:12.5px}
+.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.legend{font-size:12px;color:var(--muted);margin:0 0 12px}
+.legend b{color:var(--text);font-weight:600}
+
+/* ===== 企业表格 ===== */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+table{width:100%;border-collapse:collapse;min-width:960px}
+th{font-size:12px;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel);font-weight:600}
+td{padding:10px 12px;border-bottom:1px solid #1d2534;vertical-align:middle;font-size:13.5px}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#171f2c}
+.col-status{width:52px;text-align:center}
+.col-ops{width:118px;white-space:nowrap}
+.c-name{font-weight:600;min-width:110px}
+.c-url{min-width:150px}
+.c-acct{min-width:130px}
+.c-pw{min-width:150px}
+.c-note{max-width:220px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.muted{color:var(--muted);font-size:12.5px}
+a.link{color:var(--accent);text-decoration:none;font-weight:600}
+a.link:hover{text-decoration:underline}
+
+.statusbox{width:24px;height:24px;border-radius:6px;border:1.5px solid #3a4763;background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;padding:0;line-height:1;cursor:pointer}
+.statusbox.s-applied{border-color:var(--green);background:var(--green);color:#06281a}
+.statusbox.s-terminated{border-color:var(--red);background:var(--red);color:#2b0a0a}
+.statusbox.s-pending:hover{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+
+.empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px}
+
+/* ===== 记事本 ===== */
+.notes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.note-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.note-card:hover{border-color:#31415c}
+.note-head{display:flex;align-items:center;gap:8px}
+/* v1.0.3 2026-10-14：记事本改折叠式。默认折叠只显示标题+内容预览，点标题栏/箭头展开，
+   避免笔记增多后页面被全文拉长。展开态由 JS 条件渲染正文区（折叠时不在 DOM）。 */
+.note-toggle{flex:none;width:22px;height:22px;padding:0;border:none;background:transparent;color:var(--muted);font-size:12px;line-height:1;cursor:pointer;border-radius:5px}
+.note-toggle:hover{color:var(--accent);background:var(--accent-soft)}
+.note-preview{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:12.5px;cursor:pointer}
+.note-preview:hover{color:var(--text)}
+.note-card.collapsed{padding:9px 12px}
+.note-card.collapsed .note-title{flex:0 1 auto;max-width:45%}
+.note-title{background:transparent;border:none;border-bottom:1px dashed transparent;color:var(--text);font-weight:600;font-size:14px;padding:2px 0;flex:1;min-width:0}
+.note-title:focus{outline:none;border-bottom-color:var(--accent)}
+.note-body{background:var(--bg2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:10px;font-size:13px;line-height:1.65;min-height:160px;resize:vertical;font-family:inherit;overflow:hidden}
+.note-body:focus{outline:none;border-color:var(--accent)}
+.note-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.save-hint{font-size:11.5px;color:var(--muted)}
+
+/* ===== 弹窗 ===== */
+.backdrop{position:fixed;inset:0;background:rgba(4,8,15,.68);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;width:min(480px,100%);box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.modal h3{margin:0 0 14px;font-size:15.5px}
+.modal label{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--muted);margin-bottom:12px}
+.modal-ops{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}
+
+/* ===== Toast ===== */
+.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%);background:#222c3d;border:1px solid #34425c;color:var(--text);padding:9px 18px;border-radius:999px;font-size:13px;z-index:99;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+
+footer{padding:16px 22px 28px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);line-height:1.8}
+footer b{color:var(--text)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">📒 网申记事本<span class="sub">网申链接 · 账号密码 · 投递状态 · 记事本</span></div>
+  <div class="stats" id="stats"></div>
+  <div class="head-ops">
+    <button id="btnImport" title="从 JSON 备份文件恢复">导入备份</button>
+    <button id="btnExport" title="把全部数据导出为 JSON 文件">导出备份</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<main>
+  <!-- 网申记录 -->
+  <section>
+    <div class="sec-head">
+      <h2>📮 网申记录</h2>
+      <div class="tools">
+        <input id="searchBox" placeholder="搜索企业 / 账号 / 备注…">
+        <div id="statusChips" style="display:flex;gap:6px">
+          <button class="chip active" data-status="all">全部</button>
+          <button class="chip" data-status="pending">待投递</button>
+          <button class="chip" data-status="applied">已投递</button>
+          <button class="chip" data-status="terminated">已终止</button>
+        </div>
+        <button id="btnAdd" class="primary">＋ 添加企业</button>
+      </div>
+    </div>
+    <p class="legend">状态方框说明：点击方框循环切换 <b>待投递</b>（空）→ <b>已投递</b>（✓ 绿）→ <b>已终止</b>（✗ 红）→ 待投递。</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-status">状态</th>
+            <th>企业名称</th>
+            <th>网申链接</th>
+            <th>账号</th>
+            <th>密码</th>
+            <th>备注</th>
+            <th class="col-ops">操作</th>
+          </tr>
+        </thead>
+        <tbody id="companyRows"></tbody>
+      </table>
+      <div id="emptyCompanies" class="empty" hidden>还没有记录。点右上角「＋ 添加企业」，把企业名称和网申链接填进来吧。</div>
+    </div>
+  </section>
+
+  <!-- 记事本 -->
+  <section>
+    <div class="sec-head">
+      <h2>📝 网申记事本</h2>
+      <div class="tools">
+        <button id="btnAddNote" class="primary">＋ 新建笔记</button>
+      </div>
+    </div>
+    <div id="notesGrid" class="notes-grid"></div>
+  </section>
+</main>
+
+<footer>
+  <b>网申记事本 v1.0.4（2026-10-15）</b><br>
+  <b>数据说明：</b>所有数据只保存在<b>本机浏览器的 localStorage</b> 中，不会上传任何服务器。清除浏览器数据、换电脑或换浏览器前，请先点右上角「导出备份」保存 JSON 文件，之后可用「导入备份」恢复。<br>
+  <b>安全提醒：</b>账号密码以明文形式存在本机浏览器里，方便你一键复制，但也意味着能打开这台电脑+这个浏览器的人就能看到。不要在公用电脑上记录真实密码。
+</footer>
+
+<!-- 添加/编辑企业弹窗 -->
+<div id="modalBackdrop" class="backdrop" hidden>
+  <form id="companyForm" class="modal">
+    <h3 id="modalTitle">添加企业</h3>
+    <label>企业名称 *
+      <input id="fName" placeholder="例如：某某科技有限公司" autocomplete="off">
+    </label>
+    <label>网申链接
+      <input id="fUrl" placeholder="https://…（没填 https:// 会自动补全）" autocomplete="off">
+    </label>
+    <label>网申账号
+      <input id="fAccount" placeholder="手机号 / 邮箱 / 用户名" autocomplete="off">
+    </label>
+    <label>网申密码
+      <input id="fPassword" placeholder="没有可留空" autocomplete="off">
+    </label>
+    <label>备注
+      <textarea id="fNote" rows="3" placeholder="截止时间、内推码、开放问题要点、官网公告摘要…"></textarea>
+    </label>
+    <div class="modal-ops">
+      <button type="button" id="btnCancel" class="ghost">取消</button>
+      <button type="submit" id="btnSave" class="primary">保存</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+/* v1.0.4 2026-10-15：key 名沿用旧版「求职工作台」时代的 jobbench.v1 —— 改名不换 key，
+   否则老用户浏览器里已存的企业/笔记数据会全部失效。此值永久固定，勿改。 */
+var LS_KEY = 'jobbench.v1';
+var state = { companies: [], notes: [] };
+var filter = { q: '', status: 'all' };
+var editingId = null;
+var revealed = {};          // 密码明文显示开关：{ 企业id: true }
+var noteOpen = {};          // v1.0.3 2026-10-14：笔记展开状态（仅内存态，不持久化；刷新后默认全折叠）
+var noteSaveTimer = null;
+
+function $(s){ return document.querySelector(s); }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function findCompany(id){
+  for (var i = 0; i < state.companies.length; i++) if (state.companies[i].id === id) return state.companies[i];
+  return null;
+}
+function findNote(id){
+  for (var i = 0; i < state.notes.length; i++) if (state.notes[i].id === id) return state.notes[i];
+  return null;
+}
+function normUrl(u){
+  u = (u || '').trim();
+  if (!u) return '';
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(u)) u = 'https://' + u;
+  return u;
+}
+
+var STATUS = { pending: { icon: '' }, applied: { icon: '✓' }, terminated: { icon: '✗' } };
+
+/* ---------- 存储 ---------- */
+function load(){
+  try {
+    var raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      var d = JSON.parse(raw);
+      if (d && typeof d === 'object') {
+        state.companies = Array.isArray(d.companies) ? d.companies : [];
+        state.notes = Array.isArray(d.notes) ? d.notes : [];
+      }
+    }
+  } catch (e) { console.warn('读取本地数据失败：', e); }
+}
+function save(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch (e) { toast('保存失败：浏览器禁止了本地存储'); }
+}
+
+/* ---------- 提示与复制 ---------- */
+function toast(msg){
+  var t = $('#toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(t._tm);
+  t._tm = setTimeout(function(){ t.hidden = true; }, 1800);
+}
+function copyText(text){
+  if (text == null || text === '') { toast('没有可复制的内容'); return; }
+  function fallback(){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    toast(ok ? '已复制' : '复制失败，请手动选择复制');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ toast('已复制'); }, fallback);
+  } else {
+    fallback();
+  }
+}
+
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 460) + 'px';
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  renderStats();
+  renderCompanies();
+  renderNotes();
+}
+
+function renderStats(){
+  var n = { pending: 0, applied: 0, terminated: 0 };
+  state.companies.forEach(function(c){ if (n[c.status] != null) n[c.status]++; });
+  $('#stats').innerHTML =
+    '<span class="stat">企业 <b>' + state.companies.length + '</b></span>' +
+    '<span class="stat"><i class="dot dot-applied"></i>已投递 <b>' + n.applied + '</b></span>' +
+    '<span class="stat"><i class="dot dot-pending"></i>待投递 <b>' + n.pending + '</b></span>' +
+    '<span class="stat"><i class="dot dot-terminated"></i>已终止 <b>' + n.terminated + '</b></span>' +
+    '<span class="stat">笔记 <b>' + state.notes.length + '</b></span>';
+}
+
+function filteredCompanies(){
+  var q = filter.q.trim().toLowerCase();
+  return state.companies.filter(function(c){
+    if (filter.status !== 'all' && c.status !== filter.status) return false;
+    if (!q) return true;
+    return [c.name, c.url, c.account, c.note].join(' ').toLowerCase().indexOf(q) >= 0;
+  });
+}
+
+function renderCompanies(){
+  var list = filteredCompanies();
+  var tb = $('#companyRows');
+  tb.innerHTML = '';
+  list.forEach(function(c){
+    var st = STATUS[c.status] || STATUS.pending;
+    var tr = document.createElement('tr');
+    tr.dataset.id = c.id;
+
+    var urlCell;
+    if (c.url) {
+      urlCell = '<a class="link" href="' + esc(normUrl(c.url)) + '" target="_blank" rel="noopener noreferrer" title="' + esc(c.url) + '">打开链接 ↗</a>' +
+                ' <button type="button" class="icon-btn" data-act="copy" data-field="url" title="复制链接">⧉</button>';
+    } else {
+      urlCell = '<span class="muted">未填写</span>';
+    }
+
+    var acctCell;
+    if (c.account) {
+      acctCell = esc(c.account) + ' <button type="button" class="icon-btn" data-act="copy" data-field="account" title="复制账号">⧉</button>';
+    } else {
+      acctCell = '<span class="muted">未填写</span>';
+    }
+
+    var pwCell;
+    if (c.password) {
+      var shown = !!revealed[c.id];
+      pwCell = (shown ? esc(c.password) : '••••••') +
+               ' <button type="button" class="icon-btn" data-act="reveal" title="显示 / 隐藏密码">' + (shown ? '🙈' : '👁') + '</button>' +
+               ' <button type="button" class="icon-btn" data-act="copy" data-field="password" title="复制密码">⧉</button>';
+    } else {
+      pwCell = '<span class="muted">未填写</span>';
+    }
+
+    tr.innerHTML =
+      '<td class="col-status"><button type="button" class="statusbox s-' + (c.status || 'pending') + '" data-act="status" title="点击切换：待投递 → 已投递 → 已终止">' + st.icon + '</button></td>' +
+      '<td class="c-name">' + esc(c.name) + '</td>' +
+      '<td class="c-url">' + urlCell + '</td>' +
+      '<td class="c-acct">' + acctCell + '</td>' +
+      '<td class="c-pw">' + pwCell + '</td>' +
+      '<td class="c-note" title="' + esc(c.note || '') + '">' + esc(c.note || '') + '</td>' +
+      '<td class="col-ops"><button type="button" class="mini" data-act="edit">编辑</button> <button type="button" class="mini danger" data-act="del">删除</button></td>';
+
+    tb.appendChild(tr);
+  });
+  $('#emptyCompanies').hidden = list.length > 0;
+}
+
+function renderNotes(){
+  var g = $('#notesGrid');
+  g.innerHTML = '';
+  state.notes.forEach(function(n){
+    var open = !!noteOpen[n.id];   // v1.0.3 2026-10-14：默认折叠，仅 noteOpen 标记的展开
+    var card = document.createElement('div');
+    card.className = 'note-card' + (open ? '' : ' collapsed');
+    card.dataset.id = n.id;
+    var preview = (n.content || '').replace(/\s+/g, ' ').trim();
+    card.innerHTML =
+      '<div class="note-head">' +
+        '<button type="button" class="note-toggle" data-act="toggle-note" title="展开 / 折叠">' + (open ? '▾' : '▸') + '</button>' +
+        '<input class="note-title" value="' + esc(n.title || '') + '" placeholder="笔记标题（如：个人基本信息 / 开放问题答案）">' +
+        (open ? '' : '<span class="note-preview" title="点击展开">' + esc(preview || '（空笔记，点击展开）') + '</span>') +
+        (open ? '' : '<button type="button" class="icon-btn" data-act="copy-note" title="复制内容">⧉</button>') +
+        '<button type="button" class="mini danger" data-act="del-note">删除</button>' +
+      '</div>' +
+      (open ?
+        '<textarea class="note-body" placeholder="自由填写，无模板。例如：姓名、身份证号、手机号、邮箱、家庭住址、自我介绍、常见开放问题答案……需要时点右下角「复制内容」直接粘贴到网申页面。">' + esc(n.content || '') + '</textarea>' +
+        '<div class="note-foot"><span class="save-hint">' + (n.updatedAt ? '已保存 ' + fmtTime(n.updatedAt) : '未保存') + '</span>' +
+        '<button type="button" class="mini primary" data-act="copy-note">复制内容</button></div>'
+      : '');
+    g.appendChild(card);
+    if (open) autoGrow(card.querySelector('.note-body'));
+  });
+}
+
+// v1.0.3 2026-10-14：展开/折叠切换（重建 DOM，正文内容从 state 读，不丢失）
+function toggleNote(id){
+  noteOpen[id] = !noteOpen[id];
+  renderNotes();
+}
+
+function fmtTime(ts){
+  var d = new Date(ts);
+  function p(x){ return (x < 10 ? '0' : '') + x; }
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+/* ---------- 企业：状态 / 弹窗 ---------- */
+function cycleStatus(id){
+  var c = findCompany(id);
+  if (!c) return;
+  c.status = c.status === 'pending' ? 'applied' : c.status === 'applied' ? 'terminated' : 'pending';
+  c.updatedAt = Date.now();
+  save();
+  render();   // v1.0.1 2026-10-14：原为 renderCompanies()，导致顶部统计栏不随状态切换更新
+}
+
+function openModal(c){
+  editingId = c ? c.id : null;
+  $('#modalTitle').textContent = c ? '编辑企业' : '添加企业';
+  $('#fName').value = c ? (c.name || '') : '';
+  $('#fUrl').value = c ? (c.url || '') : '';
+  $('#fAccount').value = c ? (c.account || '') : '';
+  $('#fPassword').value = c ? (c.password || '') : '';
+  $('#fNote').value = c ? (c.note || '') : '';
+  $('#modalBackdrop').hidden = false;
+  setTimeout(function(){ $('#fName').focus(); }, 0);
+}
+function closeModal(){
+  $('#modalBackdrop').hidden = true;
+  editingId = null;
+}
+
+function saveCompany(){
+  var name = $('#fName').value.trim();
+  if (!name) { toast('请填写企业名称'); $('#fName').focus(); return; }
+  var data = {
+    name: name,
+    url: normUrl($('#fUrl').value),
+    account: $('#fAccount').value.trim(),
+    password: $('#fPassword').value,
+    note: $('#fNote').value.trim(),
+    updatedAt: Date.now()
+  };
+  var isEdit = !!editingId;
+  if (isEdit) {
+    var c = findCompany(editingId);
+    if (c) {
+      c.name = data.name; c.url = data.url; c.account = data.account;
+      c.password = data.password; c.note = data.note; c.updatedAt = data.updatedAt;
+    }
+  } else {
+    data.id = uid();
+    data.status = 'pending';
+    data.createdAt = Date.now();
+    state.companies.unshift(data);
+  }
+  save();
+  closeModal();
+  render();
+  toast(isEdit ? '修改已保存' : '已添加：' + name);
+}
+
+/* ---------- 记事本 ---------- */
+function addNote(){
+  var n = { id: uid(), title: '', content: '', updatedAt: Date.now() };
+  state.notes.unshift(n);
+  noteOpen[n.id] = true;   // v1.0.3 2026-10-14：新建的笔记默认展开，直接开写
+  save();
+  renderNotes();
+  renderStats();
+  var first = $('#notesGrid').querySelector('.note-card .note-body');
+  if (first) first.focus();
+}
+
+function scheduleNoteSave(){
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer = setTimeout(function(){
+    save();
+    document.querySelectorAll('.note-card').forEach(function(card){
+      var n = findNote(card.dataset.id);
+      var hint = card.querySelector('.save-hint');
+      if (n && hint) hint.textContent = '已保存 ' + fmtTime(n.updatedAt);
+    });
+  }, 500);
+}
+
+/* ---------- 导入 / 导出 ---------- */
+function exportData(){
+  var payload = {
+    app: 'jobbench', version: 1,
+    exportedAt: new Date().toISOString(),
+    companies: state.companies, notes: state.notes
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  var d = new Date();
+  function p(x){ return (x < 10 ? '0' : '') + x; }
+  a.href = URL.createObjectURL(blob);
+  a.download = '网申记事本备份-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  toast('备份已导出');
+}
+
+function importData(file){
+  var reader = new FileReader();
+  reader.onload = function(){
+    try {
+      var d = JSON.parse(reader.result);
+      if (!d || !Array.isArray(d.companies)) throw new Error('bad format');
+      var msg = '导入将覆盖当前全部数据（现有 ' + state.companies.length + ' 家企业、' + state.notes.length + ' 条笔记）。建议先导出备份。确定导入？';
+      if (typeof confirm === 'function' && !confirm(msg)) return;
+      state.companies = d.companies.map(function(c){
+        return {
+          id: c.id || uid(),
+          name: String(c.name || '未命名'),
+          url: c.url || '', account: c.account || '', password: c.password || '',
+          note: c.note || '', status: STATUS[c.status] ? c.status : 'pending',
+          createdAt: c.createdAt || Date.now(), updatedAt: c.updatedAt || Date.now()
+        };
+      });
+      state.notes = (Array.isArray(d.notes) ? d.notes : []).map(function(n){
+        return { id: n.id || uid(), title: n.title || '', content: n.content || '', updatedAt: n.updatedAt || Date.now() };
+      });
+      revealed = {};
+      noteOpen = {};   // v1.0.3 2026-10-14：导入后全部笔记默认折叠
+      save();
+      render();
+      toast('导入成功');
+    } catch (e) {
+      toast('导入失败：文件格式不正确');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- 事件绑定 ---------- */
+function bindEvents(){
+  $('#btnAdd').addEventListener('click', function(){ openModal(null); });
+  $('#companyForm').addEventListener('submit', function(e){ e.preventDefault(); saveCompany(); });
+  $('#btnCancel').addEventListener('click', closeModal);
+  $('#modalBackdrop').addEventListener('click', function(e){ if (e.target === this) closeModal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal(); });
+
+  $('#companyRows').addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    var tr = btn.closest('tr');
+    var id = tr && tr.dataset.id;
+    var c = findCompany(id);
+    if (!c) return;
+    var act = btn.dataset.act;
+    if (act === 'status') cycleStatus(id);
+    else if (act === 'edit') openModal(c);
+    else if (act === 'del') {
+      if (typeof confirm !== 'function' || confirm('删除「' + c.name + '」？该企业的链接、账号、密码将一并删除。')) {
+        state.companies = state.companies.filter(function(x){ return x.id !== id; });
+        save(); render();
+        toast('已删除');
+      }
+    }
+    else if (act === 'copy') copyText(c[btn.dataset.field]);
+    else if (act === 'reveal') { revealed[id] = !revealed[id]; renderCompanies(); }
+  });
+
+  $('#searchBox').addEventListener('input', function(){ filter.q = this.value; renderCompanies(); });
+
+  $('#statusChips').addEventListener('click', function(e){
+    var b = e.target.closest('.chip');
+    if (!b) return;
+    filter.status = b.dataset.status;
+    document.querySelectorAll('#statusChips .chip').forEach(function(x){ x.classList.toggle('active', x === b); });
+    renderCompanies();
+  });
+
+  $('#btnAddNote').addEventListener('click', addNote);
+
+  $('#notesGrid').addEventListener('click', function(e){
+    var card = e.target.closest('.note-card');
+    if (!card) return;
+    var n = card && findNote(card.dataset.id);
+    if (!n) return;
+    var actEl = e.target.closest('[data-act]');
+    var act = actEl && actEl.dataset.act;
+    if (act === 'copy-note') { copyText(n.content); return; }
+    if (act === 'del-note') {
+      if (typeof confirm !== 'function' || confirm('删除这条笔记？')) {
+        state.notes = state.notes.filter(function(x){ return x.id !== n.id; });
+        delete noteOpen[n.id];   // v1.0.3 2026-10-14：同步清理展开态内存，避免无限增长
+        save(); renderNotes(); renderStats();
+        toast('笔记已删除');
+      }
+      return;
+    }
+    if (act === 'toggle-note') { toggleNote(n.id); return; }
+    // v1.0.3 2026-10-14：点击标题栏空白/预览区域也可切换展开折叠；
+    // 点在 input（标题编辑）或按钮上不拦截，标题始终可直接编辑
+    if (e.target.closest('input,button,[data-act]')) return;
+    if (e.target.closest('.note-head')) toggleNote(n.id);
+  });
+
+  $('#notesGrid').addEventListener('input', function(e){
+    var card = e.target.closest('.note-card');
+    if (!card) return;
+    var n = findNote(card.dataset.id);
+    if (!n) return;
+    if (e.target.classList.contains('note-title')) n.title = e.target.value;
+    else if (e.target.classList.contains('note-body')) { n.content = e.target.value; autoGrow(e.target); }
+    n.updatedAt = Date.now();
+    scheduleNoteSave();
+  });
+
+  $('#btnExport').addEventListener('click', exportData);
+  $('#btnImport').addEventListener('click', function(){ $('#importFile').click(); });
+  $('#importFile').addEventListener('change', function(e){
+    var f = e.target.files && e.target.files[0];
+    if (f) importData(f);
+    e.target.value = '';
+  });
+}
+
+/* ---------- 启动 ---------- */
+load();
+bindEvents();
+render();
+
+})();
+</script>
+</body>
+</html>

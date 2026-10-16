@@ -1,0 +1,49 @@
+{
+  "name": "online-app-notepad",
+  "version": "1.0.4",
+  "description": "网申记事本（Online Application Notepad）——应届生网申投递管理工具：网申链接 / 账号密码 / 投递状态 / 自由记事本，数据全部存本机",
+  "license": "MIT",
+  "author": "kongwenjun56-maker",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.kongwenjun56maker.onlineappnotepad",
+    "productName": "网申记事本",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "app/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "网申记事本"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "kongwenjun56-maker",
+      "repo": "online-app-notepad"
+    }
+  }
+}

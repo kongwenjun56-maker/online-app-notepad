@@ -1,0 +1,24 @@
+# 依赖与构建产物
+node_modules/
+dist/
+npm-debug.log*
+
+# 本地环境配置（含镜像地址等，不入库）
+.npmrc
+
+# ===== 隐私红线 =====
+# 本地导出的备份 JSON 含真实企业、账号、密码，严禁入库！
+*备份*.json
+*backup*.json
+jobbench-backup*.json
+求职工作台备份*.json
+
+# 系统垃圾
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本地验证临时产物（本环境删除通道异常未能清理，手动删除以下文件即可）
+/*.txt
+/*.log
+verify-dist.js
