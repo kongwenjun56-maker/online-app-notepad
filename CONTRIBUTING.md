@@ -16,11 +16,16 @@
 4. PR 描述写清：改了什么、为什么、怎么验证的
 5. **所有改动经维护者 review 后才能合并**——这不是形式主义，是防恶意的必要流程
 
+## 🤖 PR 会自动跑检查
+
+任何指向 `main` 的 PR 都会自动触发 GitHub Actions 冒烟测试（`test/smoke.js`，58 项断言）。**测试不全绿说明改坏了东西**，请先把 CI 跑绿再等 review；fork 的 PR 首次运行需维护者批准，这是防 workflow 篡改的设定，不是刁难。
+
 ## ✅ 提交前自检
 
 ```bash
-npm start            # 能正常启动、核心流程手工过一遍
-node smoke-test.js   # 有冒烟测试脚本的版本需要跑过
+npm ci             # 严格按 package-lock.json 安装依赖
+npm start          # 能正常启动、核心流程手工过一遍
+node test/smoke.js # 冒烟测试必须 58/58 全过、退出码 0
 ```
 
 自查清单：

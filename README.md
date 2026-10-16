@@ -1,5 +1,7 @@
 # 📒 网申记事本（Online Application Notepad）
 
+![CI](https://github.com/kongwenjun56-maker/online-app-notepad/actions/workflows/ci.yml/badge.svg)
+
 一个给应届生用的**网申投递管理桌面工具**：把各家企业的网申链接、平台账号密码、投递进度和常用网申信息，集中在一个本地应用里管理。
 
 - 🖥️ **本地优先**：所有数据只存在你自己电脑上，不联网、不上传、无账号体系

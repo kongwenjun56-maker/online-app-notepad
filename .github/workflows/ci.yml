@@ -1,0 +1,30 @@
+# CI — 任何人向 main 提 PR 时自动跑冒烟测试
+# 与 release.yml 的分工：release.yml 只在打 v* tag 时构建安装包并发 Release；
+# 本文件盯 PR，测试挂了 PR 页面直接红，配合分支规则集的「CI 通过才能合并」闭环。
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+# 最小权限：只读仓库内容，PR 场景不需要写任何东西
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: 冒烟测试（jsdom）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # npm ci 需要 package-lock.json（已入库），严格按锁文件安装，防依赖漂移
+      - run: npm ci
+
+      # 退出码 1 = 有失败项，CI 判红
+      - run: node test/smoke.js
